@@ -1,4 +1,4 @@
-module github.com/worldbug/batcher-worker
+module github.com/worldbug/batching-worker
 
 go 1.20
 

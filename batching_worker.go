@@ -1,4 +1,4 @@
-package batcherworker
+package batchingworker
 
 import (
 	"context"
@@ -9,13 +9,13 @@ import (
 
 type ProcessFunc[T any] func(context.Context, []T)
 
-func NewWorkerPool[T any](
+func NewBatchingWorker[T any](
 	process ProcessFunc[T],
 	batchSize int,
 	workersCount int,
 	cleanDuration time.Duration,
-) *Worker[T] {
-	return &Worker[T]{
+) *BatchingWorker[T] {
+	return &BatchingWorker[T]{
 		batchSize:     batchSize,
 		cleanDuration: cleanDuration,
 		process:       process,
@@ -24,10 +24,10 @@ func NewWorkerPool[T any](
 	}
 }
 
-// Worker Накапливает слайс T и запускает process
+// BatchingWorker Накапливает слайс T и запускает process
 // если слайс достигает batchSize
 // или проходит cleanDuration с момента последнего Send
-type Worker[T any] struct {
+type BatchingWorker[T any] struct {
 	items         chan T
 	process       ProcessFunc[T]
 	batchSize     int
@@ -35,7 +35,7 @@ type Worker[T any] struct {
 	cleanDuration time.Duration
 }
 
-func (w *Worker[T]) Start(ctx context.Context) error {
+func (w *BatchingWorker[T]) Start(ctx context.Context) error {
 	eg := &errgroup.Group{}
 
 	for i := 0; i < w.workersCount; i++ {
@@ -45,7 +45,7 @@ func (w *Worker[T]) Start(ctx context.Context) error {
 	return eg.Wait()
 }
 
-func (w *Worker[T]) start(ctx context.Context) error {
+func (w *BatchingWorker[T]) start(ctx context.Context) error {
 	cleanTicker := time.NewTicker(w.cleanDuration)
 	defer cleanTicker.Stop()
 
@@ -81,6 +81,6 @@ func (w *Worker[T]) start(ctx context.Context) error {
 	}
 }
 
-func (w *Worker[T]) Send(ctx context.Context, item T) {
+func (w *BatchingWorker[T]) Send(ctx context.Context, item T) {
 	w.items <- item
 }
